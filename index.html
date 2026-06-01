@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="theme-color" content="#C9A96E"/>
+<title>Makeup Artist</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Tajawal',sans-serif;background:#FAF7F4;direction:rtl;color:#2C1810}
+::-webkit-scrollbar{width:0}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">const PASS = "neura2025";
+const defaultProfile = {
+  name: "Sara Shorab",
+  title: "خبيرة تجميل العرائس",
+  bio: "أجمل لحظات حياتك تستحق أجمل إطلالة ✨",
+  photo: "", phone: "+20 01061234434",
+  facebook: "https://facebook.com/sarashorab",
+  youtube: "https://youtube.com/@sarashorab",
+  whatsapp: "+20 01061234434"
+};
+const defCats = ["عرائس","سهرة","يومي","خطوبة","تخرج"];
+
+function App() {
+  const [page, setPage] = React.useState("home");
+  const [profile, setProfile] = React.useState(() => { try { return JSON.parse(localStorage.getItem("ma_p")) || defaultProfile; } catch { return defaultProfile; }});
+  const [gallery, setGallery] = React.useState(() => { try { return JSON.parse(localStorage.getItem("ma_g")) || []; } catch { return []; }});
+  const [cats, setCats] = React.useState(() => { try { return JSON.parse(localStorage.getItem("ma_c")) || defCats; } catch { return defCats; }});
+  const [isAdmin, setIsAdmin] = React.useState(false);
+  const [pw, setPw] = React.useState("");
+  const [pwErr, setPwErr] = React.useState(false);
+  const [activeCat, setActiveCat] = React.useState("الكل");
+  const [editP, setEditP] = React.useState(null);
+  const [newItem, setNewItem] = React.useState({title:"",category:"",url:"",description:"",price:""});
+  const [editItem, setEditItem] = React.useState(null);
+  const [lightbox, setLightbox] = React.useState(null);
+  const [toast, setToast] = React.useState("");
+  const [tab, setTab] = React.useState("gallery");
+  const [newCat, setNewCat] = React.useState("");
+  const [editCatIdx, setEditCatIdx] = React.useState(null);
+  const [editCatVal, setEditCatVal] = React.useState("");
+
+  React.useEffect(() => { localStorage.setItem("ma_p", JSON.stringify(profile)); }, [profile]);
+  React.useEffect(() => { localStorage.setItem("ma_g", JSON.stringify(gallery)); }, [gallery]);
+  React.useEffect(() => { localStorage.setItem("ma_c", JSON.stringify(cats)); }, [cats]);
+
+  const showToast = (m) => { setToast(m); setTimeout(() => setToast(""), 2500); };
+
+  const login = () => {
+    if (pw === PASS) { setIsAdmin(true); setPwErr(false); setPage("admin"); setEditP({...profile}); setNewItem({title:"",category:cats[0]||"",url:"",description:"",price:""}); }
+    else setPwErr(true);
+  };
+
+  const toBase64 = (file, cb) => { const r = new FileReader(); r.onload = e => cb(e.target.result); r.readAsDataURL(file); };
+
+  const addItem = () => {
+    if (!newItem.url) { showToast("⚠️ الرجاء رفع صورة"); return; }
+    setGallery(g => [{...newItem, id: Date.now(), date: new Date().toISOString().slice(0,10)}, ...g]);
+    setNewItem({title:"",category:cats[0]||"",url:"",description:"",price:""});
+    showToast("✅ تمت الإضافة");
+  };
+
+  const saveEdit = () => { setGallery(g => g.map(i => i.id === editItem.id ? editItem : i)); setEditItem(null); showToast("✅ تم التعديل"); };
+  const delItem = (id) => { setGallery(g => g.filter(i => i.id !== id)); showToast("🗑️ تم الحذف"); };
+  const addCat = () => { const t = newCat.trim(); if (!t || cats.includes(t)) return; setCats(c => [...c, t]); setNewCat(""); showToast("✅ تمت الإضافة"); };
+  const delCat = (i) => { const n = cats[i]; setCats(c => c.filter((_,x) => x !== i)); setGallery(g => g.map(item => item.category === n ? {...item, category: cats[0]||""} : item)); showToast("🗑️ تم الحذف"); };
+  const saveCat = (i) => { const o = cats[i]; const n = editCatVal.trim(); if (!n) return; setCats(c => c.map((v,x) => x===i?n:v)); setGallery(g => g.map(item => item.category===o?{...item,category:n}:item)); setEditCatIdx(null); showToast("✅ تم التعديل"); };
+
+  const filtered = activeCat === "الكل" ? gallery : gallery.filter(i => i.category === activeCat);
+  const allCats = ["الكل", ...cats];
+
+  const css = (obj) => Object.entries(obj).map(([k,v]) => `${k.replace(/([A-Z])/g,'-$1').toLowerCase()}:${v}`).join(';');
+
+  if (page === "login") return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(160deg,#2C1810,#4A2C1A)",padding:"32px"}}>
+      <div style={{background:"rgba(255,255,255,0.06)",borderRadius:"24px",padding:"32px",width:"100%",maxWidth:"360px",border:"1px solid rgba(201,169,110,0.2)",textAlign:"center"}}>
+        <div style={{fontSize:"48px",marginBottom:"12px"}}>🔐</div>
+        <div style={{color:"#F5ECD7",fontSize:"22px",fontWeight:"700",marginBottom:"6px"}}>لوحة الإدارة</div>
+        <div style={{color:"#C9A96E",fontSize:"13px",marginBottom:"24px"}}>أدخل كلمة المرور</div>
+        <input type="password" placeholder="••••••••" value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()}
+          style={{width:"100%",padding:"13px",borderRadius:"12px",border:pwErr?"1.5px solid #E53E3E":"1.5px solid rgba(201,169,110,0.3)",background:"rgba(255,255,255,0.08)",color:"#F5ECD7",fontSize:"14px",fontFamily:"Tajawal",textAlign:"center",outline:"none",marginBottom:"14px",boxSizing:"border-box"}}/>
+        {pwErr && <div style={{color:"#FC8181",fontSize:"12px",marginBottom:"10px"}}>كلمة المرور غير صحيحة</div>}
+        <button onClick={login} style={{width:"100%",padding:"13px",background:"linear-gradient(135deg,#C9A96E,#8B6914)",border:"none",borderRadius:"12px",color:"#fff",fontSize:"15px",fontWeight:"700",cursor:"pointer",fontFamily:"Tajawal"}}>دخول</button>
+        <button onClick={()=>setPage("home")} style={{background:"none",border:"none",color:"#C9A96E",marginTop:"16px",cursor:"pointer",fontSize:"13px",fontFamily:"Tajawal"}}>← العودة</button>
+      </div>
+    </div>
+  );
+
+  if (page === "admin" && isAdmin) return (
+    <div style={{fontFamily:"Tajawal,sans-serif",background:"#FAF7F4",minHeight:"100vh",direction:"rtl",maxWidth:"480px",margin:"0 auto"}}>
+      {toast && <div style={{position:"fixed",top:"60px",left:"50%",transform:"translateX(-50%)",background:"#2C1810",color:"#F5ECD7",padding:"10px 24px",borderRadius:"30px",fontSize:"13px",zIndex:"300",border:"1px solid #C9A96E",whiteSpace:"nowrap"}}>{toast}</div>}
+      {editItem && (
+        <div style={{position:"fixed",inset:"0",background:"rgba(0,0,0,0.7)",zIndex:"250",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+          <div style={{background:"#FAF7F4",borderRadius:"20px 20px 0 0",padding:"20px 16px 40px",width:"100%",maxWidth:"480px",maxHeight:"90vh",overflowY:"auto"}}>
+            <div style={{fontSize:"16px",fontWeight:"700",color:"#2C1810",marginBottom:"16px"}}>✏️ تعديل العمل</div>
+            {[["عنوان العمل","title","text"],["التفاصيل","description","textarea"],["السعر","price","text"]].map(([l,k,t]) => (
+              <div key={k}>
+                <div style={{fontSize:"12px",color:"#8B6914",fontWeight:"700",marginBottom:"6px"}}>{l}</div>
+                {t==="textarea"
+                  ? <textarea value={editItem[k]||""} onChange={e=>setEditItem(p=>({...p,[k]:e.target.value}))} style={{width:"100%",padding:"10px 12px",borderRadius:"10px",border:"1.5px solid #E8DDD0",fontSize:"13px",fontFamily:"Tajawal",color:"#2C1810",background:"#FAF7F4",outline:"none",boxSizing:"border-box",marginBottom:"10px",resize:"vertical",minHeight:"72px"}}/>
+                  : <input value={editItem[k]||""} onChange={e=>setEditItem(p=>({...p,[k]:e.target.value}))} style={{width:"100%",padding:"10px 12px",borderRadius:"10px",border:"1.5px solid #E8DDD0",fontSize:"13px",fontFamily:"Tajawal",color:"#2C1810",background:"#FAF7F4",outline:"none",boxSizing:"border-box",marginBottom:"10px"}}/>}
+              </div>
+            ))}
+            <div style={{fontSize:"12px",color:"#8B6914",fontWeight:"700",marginBottom:"6px"}}>التصنيف</div>
+            <select value={editItem.category} onChange={e=>setEditItem(p=>({...p,category:e.target.value}))} style={{width:"100%",padding:"10px 12px",borderRadius:"10px",border:"1.5px solid #E8DDD0",fontSize:"13px",fontFamily:"Tajawal",color:"#2C1810",background:"#FAF7F4",outline:"none",boxSizing:"border-box",marginBottom:"10px"}}>
+              {cats.map(c=><option key={c}>{c}</option>)}
+            </select>
+            <input type="file" accept="image/*" id="editImg" style={{display:"none"}} onChange={e=>toBase64(e.target.files[0],v=>setEditItem(p=>({...p,url:v})))}/>
+            <label htmlFor="editImg" style={{display:"flex",alignItems:"center",justifyContent:"center",gap:"8px",width:"100%",padding:"12px",borderRadius:"10px",border:"2px dashed #C9A96E",background:"rgba(201,169,110,0.06)",color:"#8B6914",cursor:"pointer",fontSize:"13px",marginBottom:"10px"}}>📷 تغيير الصورة</label>
+            {editItem.url && <img src={editItem.url} style={{width:"100%",height:"140px",objectFit:"cover",borderRadius:"10px",marginBottom:"10px"}}/>}
+            <div style={{display:"flex",gap:"10px"}}>
+              <button onClick={saveEdit} style={{flex:"2",padding:"13px",background:"linear-gradient(135deg,#C9A96E,#8B6914)",border:"none",borderRadius:"12px",color:"#fff",fontSize:"14px",fontWeight:"700",cursor:"pointer",fontFamily:"Tajawal"}}>💾 حفظ</button>
+              <button onClick={()=>setEditItem(null)} style={{flex:"1",padding:"13px",background:"#F0E8DE",border:"none",borderRadius:"12px",color:"#8C7B6B",cursor:"pointer",fontFamily:"Tajawal",fontSize:"13px"}}>إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div style={{background:"linear-gradient(135deg,#2C1810,#4A2C1A)",padding:"50px 20px 20px",color:"#F5ECD7"}}>
+        <div style={{fontSize:"20px",fontWeight:"700"}}>⚙️ لوحة الإدارة</div>
+        <div style={{fontSize:"12px",color:"#C9A96E",marginTop:"4px"}}>Neura Studio</div>
+      </div>
+      <div style={{display:"flex",background:"#fff",borderBottom:"2px solid #F0E8DE"}}>
+        {[["gallery","🖼️ المعرض"],["cats","🏷️ التصنيفات"],["profile","👤 الملف"]].map(([k,l])=>(
+          <button key={k} onClick={()=>setTab(k)} style={{flex:"1",padding:"12px 4px",border:"none",background:"transparent",cursor:"pointer",fontSize:"12px",fontFamily:"Tajawal",color:tab===k?"#8B6914":"#8C7B6B",fontWeight:tab===k?"700":"400",borderBottom:tab===k?"2px solid #C9A96E":"2px solid transparent",marginBottom:"-2px"}}>{l}</button>
+        ))}
+      </div>
+
+      {tab==="gallery" && (
+        <div style={{paddingBottom:"80px"}}>
+          <div style={{background:"#fff",borderRadius:"16px",padding:"16px",margin:"12px 16px",boxShadow:"0 2px 12px rgba(44,24,16,0.06)"}}>
+            <div style={{fontSize:"14px",fontWeight:"700",color:"#2C1810",marginBottom:"12px"}}>➕ إضافة عمل جديد</div>
+            {[["عنوان العمل","title","text"],["التفاصيل / الوصف","description","textarea"],["السعر (اختياري)","price","text"]].map(([l,k,t])=>(
+              <div key={k}>
+                <div style={{fontSize:"12px",color:"#8B6914",fontWeight:"700",marginBottom:"6px"}}>{l}</div>
+                {t==="textarea"
+                  ? <textarea value={newItem[k]} onChange={e=>setNewItem(p=>({...p,[k]:e.target.value}))} placeholder="اكتبي التفاصيل..." style={{width:"100%",padding:"10px 12px",borderRadius:"10px",border:"1.5px solid #E8DDD0",fontSize:"13px",fontFamily:"Tajawal",color:"#2C1810",background:"#FAF7F4",outline:"none",boxSizing:"border-box",marginBottom:"10px",resize:"vertical",minHeight:"72px"}}/>
+                  : <input value={newItem[k]} onChange={e=>setNewItem(p=>({...p,[k]:e.target.value}))} style={{width:"100%",padding:"10px 12px",borderRadius:"10px",border:"1.5px solid #E8DDD0",fontSize:"13px",fontFamily:"Tajawal",color:"#2C1810",background:"#FAF7F4",outline:"none",boxSizing:"border-box",marginBottom:"10px"}}/>}
+              </div>
+            ))}
+            <div style={{fontSize:"12px",color:"#8B6914",fontWeight:"700",marginBottom:"6px"}}>التصنيف</div>
+            <select value={newItem.category} onChange={e=>setNewItem(p=>({...p,category:e.target.value}))} style={{width:"100%",padding:"10px 12px",borderRadius:"10px",border:"1.5px solid #E8DDD0",fontSize:"13px",fontFamily:"Tajawal",color:"#2C1810",background:"#FAF7F4",outline:"none",boxSizing:"border-box",marginBottom:"10px"}}>
+              {cats.map(c=><option key={c}>{c}</option>)}
+            </select>
+            <input type="file" accept="image/*" id="newImg" style={{display:"none"}} onChange={e=>toBase64(e.target.files[0],v=>setNewItem(p=>({...p,url:v})))}/>
+            <label htmlFor="newImg" style={{display:"flex",alignItems:"center",justifyContent:"center",gap:"8px",width:"100%",padding:"12px",borderRadius:"10px",border:"2px dashed #C9A96E",background:"rgba(201,169,110,0.06)",color:"#8B6914",cursor:"pointer",fontSize:"13px",marginBottom:"10px"}}>{newItem.url?"✅ تم الاختيار — تغيير":"📷 اختر صورة"}</label>
+            {newItem.url && <img src={newItem.url} style={{width:"100%",height:"150px",objectFit:"cover",borderRadius:"10px",marginBottom:"10px"}}/>}
+            <button onClick={addItem} style={{width:"100%",padding:"13px",background:"linear-gradient(135deg,#C9A96E,#8B6914)",border:"none",borderRadius:"12px",color:"#fff",fontSize:"14px",fontWeight:"700",cursor:"pointer",fontFamily:"Tajawal"}}>إضافة للمعرض ✨</button>
+          </div>
+          {gallery.length > 0 && (
+            <div style={{background:"#fff",borderRadius:"16px",padding:"16px",margin:"12px 16px",boxShadow:"0 2px 12px rgba(44,24,16,0.06)"}}>
+              <div style={{fontSize:"14px",fontWeight:"700",color:"#2C1810",marginBottom:"12px"}}>📋 الأعمال ({gallery.length})</div>
+              {gallery.map(item=>(
+                <div key={item.id} style={{display:"flex",gap:"10px",alignItems:"flex-start",padding:"12px 0",borderBottom:"1px solid #F0E8DE"}}>
+                  {item.url ? <img src={item.url} style={{width:"58px",height:"58px",borderRadius:"10px",objectFit:"cover",flexShrink:"0"}}/> : <div style={{width:"58px",height:"58px",borderRadius:"10px",background:"linear-gradient(135deg,#F5ECD7,#EDD9B8)",flexShrink:"0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"22px"}}>💄</div>}
+                  <div style={{flex:"1",minWidth:"0"}}>
+                    <div style={{fontSize:"13px",fontWeight:"600",color:"#2C1810"}}>{item.title||"بدون عنوان"}</div>
+                    <div style={{fontSize:"11px",color:"#C9A96E",margin:"2px 0"}}>{item.category}</div>
+                    {item.price && <div style={{fontSize:"11px",color:"#38A169",fontWeight:"700"}}>💰 {item.price}</div>}
+                    <div style={{display:"flex",gap:"6px",marginTop:"6px"}}>
+                      <button onClick={()=>setEditItem({...item})} style={{padding:"5px 12px",background:"#F0F7FF",border:"none",borderRadius:"8px",color:"#2B6CB0",cursor:"pointer",fontSize:"11px",fontFamily:"Tajawal"}}>تعديل</button>
+                      <button onClick={()=>delItem(item.id)} style={{padding:"5px 12px",background:"#FFF0F0",border:"none",borderRadius:"8px",color:"#E53E3E",cursor:"pointer",fontSize:"11px",fontFamily:"Tajawal"}}>حذف</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab==="cats" && (
+        <div style={{paddingBottom:"80px"}}>
+          <div style={{background:"#fff",borderRadius:"16px",padding:"16px",margin:"12px 16px",boxShadow:"0 2px 12px rgba(44,24,16,0.06)"}}>
+            <div style={{fontSize:"14px",fontWeight:"700",color:"#2C1810",marginBottom:"14px"}}>🏷️ إدارة التصنيفات</div>
+            {cats.map((cat,idx)=>(
+              <div key={idx} style={{display:"flex",alignItems:"center",gap:"8px",padding:"8px 0",borderBottom:"1px solid #F0E8DE"}}>
+                {editCatIdx===idx ? (
+                  <>
+                    <input value={editCatVal} onChange={e=>setEditCatVal(e.target.value)} style={{flex:"1",padding:"8px 10px",borderRadius:"8px",border:"1.5px solid #E8DDD0",fontSize:"13px",fontFamily:"Tajawal",outline:"none"}}/>
+                    <button onClick={()=>saveCat(idx)} style={{padding:"5px 12px",background:"#F0FFF4",border:"none",borderRadius:"8px",color:"#276749",cursor:"pointer",fontSize:"11px",fontFamily:"Tajawal"}}>حفظ</button>
+                    <button onClick={()=>setEditCatIdx(null)} style={{padding:"5px 12px",background:"#FFF0F0",border:"none",borderRadius:"8px",color:"#E53E3E",cursor:"pointer",fontSize:"11px",fontFamily:"Tajawal"}}>إلغاء</button>
+                  </>
+                ) : (
+                  <>
+                    <span style={{flex:"1",fontSize:"14px",fontWeight:"600",color:"#2C1810"}}>🏷️ {cat}</span>
+                    <span style={{fontSize:"11px",color:"#8C7B6B"}}>{gallery.filter(i=>i.category===cat).length} عمل</span>
+                    <button onClick={()=>{setEditCatIdx(idx);setEditCatVal(cat);}} style={{padding:"5px 12px",background:"#F0F7FF",border:"none",borderRadius:"8px",color:"#2B6CB0",cursor:"pointer",fontSize:"11px",fontFamily:"Tajawal"}}>تعديل</button>
+                    {cats.length>1 && <button onClick={()=>delCat(idx)} style={{padding:"5px 12px",background:"#FFF0F0",border:"none",borderRadius:"8px",color:"#E53E3E",cursor:"pointer",fontSize:"11px",fontFamily:"Tajawal"}}>حذف</button>}
+                  </>
+                )}
+              </div>
+            ))}
+            <div style={{display:"flex",gap:"8px",marginTop:"16px"}}>
+              <input value={newCat} onChange={e=>setNewCat(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addCat()} placeholder="تصنيف جديد..." style={{flex:"1",padding:"10px 12px",borderRadius:"10px",border:"1.5px solid #E8DDD0",fontSize:"13px",fontFamily:"Tajawal",outline:"none"}}/>
+              <button onClick={addCat} style={{padding:"10px 16px",background:"linear-gradient(135deg,#C9A96E,#8B6914)",border:"none",borderRadius:"10px",color:"#fff",cursor:"pointer",fontFamily:"Tajawal",fontWeight:"700",flexShrink:"0"}}>+ إضافة</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab==="profile" && editP && (
+        <div style={{paddingBottom:"80px"}}>
+          <div style={{background:"#fff",borderRadius:"16px",padding:"16px",margin:"12px 16px",boxShadow:"0 2px 12px rgba(44,24,16,0.06)"}}>
+            <div style={{fontSize:"14px",fontWeight:"700",color:"#2C1810",marginBottom:"12px"}}>👤 الصورة الشخصية</div>
+            <input type="file" accept="image/*" id="profImg" style={{display:"none"}} onChange={e=>toBase64(e.target.files[0],v=>setEditP(p=>({...p,photo:v})))}/>
+            <label htmlFor="profImg" style={{display:"block",textAlign:"center",cursor:"pointer"}}>
+              {editP.photo ? <img src={editP.photo} style={{width:"90px",height:"90px",borderRadius:"50%",objectFit:"cover",border:"3px solid #C9A96E",margin:"0 auto 8px",display:"block"}}/> : <div style={{width:"90px",height:"90px",borderRadius:"50%",background:"linear-gradient(135deg,#F5ECD7,#EDD9B8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"36px",margin:"0 auto 8px",border:"3px dashed #C9A96E"}}>💄</div>}
+              <span style={{color:"#C9A96E",fontSize:"12px"}}>اضغط لتغيير الصورة</span>
+            </label>
+          </div>
+          <div style={{background:"#fff",borderRadius:"16px",padding:"16px",margin:"12px 16px",boxShadow:"0 2px 12px rgba(44,24,16,0.06)"}}>
+            <div style={{fontSize:"14px",fontWeight:"700",color:"#2C1810",marginBottom:"12px"}}>📝 البيانات</div>
+            {[["الاسم","name"],["اللقب المهني","title"],["نبذة قصيرة","bio"],["📞 هاتف","phone"],["💬 واتساب","whatsapp"],["👤 فيسبوك","facebook"],["▶️ يوتيوب","youtube"]].map(([l,k])=>(
+              <div key={k}>
+                <div style={{fontSize:"12px",color:"#8B6914",fontWeight:"700",marginBottom:"6px"}}>{l}</div>
+                <input value={editP[k]||""} onChange={e=>setEditP(p=>({...p,[k]:e.target.value}))} style={{width:"100%",padding:"10px 12px",borderRadius:"10px",border:"1.5px solid #E8DDD0",fontSize:"13px",fontFamily:"Tajawal",color:"#2C1810",background:"#FAF7F4",outline:"none",boxSizing:"border-box",marginBottom:"10px"}}/>
+              </div>
+            ))}
+          </div>
+          <div style={{padding:"0 16px 20px"}}>
+            <button onClick={()=>{setProfile({...editP});showToast("✅ تم الحفظ");}} style={{width:"100%",padding:"13px",background:"linear-gradient(135deg,#C9A96E,#8B6914)",border:"none",borderRadius:"12px",color:"#fff",fontSize:"14px",fontWeight:"700",cursor:"pointer",fontFamily:"Tajawal"}}>💾 حفظ جميع التغييرات</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{position:"fixed",bottom:"0",left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:"480px",background:"rgba(255,255,255,0.95)",borderTop:"1px solid #E8DDD0",display:"flex",justifyContent:"space-around",padding:"10px 0 16px",zIndex:"100"}}>
+        <button onClick={()=>setPage("home")} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"3px",padding:"6px 18px",borderRadius:"16px",border:"none",cursor:"pointer",background:"transparent",color:"#8C7B6B",fontSize:"11px",fontFamily:"Tajawal"}}>
+          <span style={{fontSize:"20px"}}>🏠</span><span>الرئيسية</span>
+        </button>
+        <button style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"3px",padding:"6px 18px",borderRadius:"16px",border:"none",cursor:"pointer",background:"linear-gradient(135deg,#C9A96E,#8B6914)",color:"#fff",fontSize:"11px",fontFamily:"Tajawal",fontWeight:"700"}}>
+          <span style={{fontSize:"20px"}}>⚙️</span><span>الإدارة</span>
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{fontFamily:"Tajawal,sans-serif",background:"#FAF7F4",minHeight:"100vh",direction:"rtl",color:"#2C1810",maxWidth:"480px",margin:"0 auto",position:"relative"}}>
+      {toast && <div style={{position:"fixed",top:"60px",left:"50%",transform:"translateX(-50%)",background:"#2C1810",color:"#F5ECD7",padding:"10px 24px",borderRadius:"30px",fontSize:"13px",zIndex:"300",border:"1px solid #C9A96E",whiteSpace:"nowrap"}}>{toast}</div>}
+
+      {lightbox && (
+        <div style={{position:"fixed",inset:"0",background:"rgba(0,0,0,0.93)",zIndex:"200",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",padding:"20px"}} onClick={()=>setLightbox(null)}>
+          <button onClick={()=>setLightbox(null)} style={{position:"absolute",top:"20px",left:"20px",background:"rgba(255,255,255,0.1)",border:"none",color:"#fff",fontSize:"22px",width:"44px",height:"44px",borderRadius:"50%",cursor:"pointer"}}>✕</button>
+          {lightbox.url && <img src={lightbox.url} style={{maxWidth:"100%",maxHeight:"55vh",borderRadius:"16px",objectFit:"contain"}}/>}
+          <div style={{width:"100%",background:"rgba(255,255,255,0.06)",borderRadius:"16px",padding:"14px 16px",marginTop:"14px",border:"1px solid rgba(201,169,110,0.2)"}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"6px"}}>
+              <div style={{color:"#F5ECD7",fontSize:"15px",fontWeight:"700"}}>{lightbox.title||"بدون عنوان"}</div>
+              {lightbox.price && <div style={{background:"rgba(201,169,110,0.2)",color:"#C9A96E",padding:"4px 12px",borderRadius:"20px",fontSize:"13px",fontWeight:"700"}}>💰 {lightbox.price}</div>}
+            </div>
+            <div style={{color:"#C9A96E",fontSize:"12px",marginBottom:lightbox.description?"8px":"0"}}>🏷️ {lightbox.category}</div>
+            {lightbox.description && <div style={{color:"rgba(245,236,215,0.8)",fontSize:"13px",lineHeight:"1.7"}}>{lightbox.description}</div>}
+            {profile.whatsapp && <a href={`https://wa.me/${profile.whatsapp.replace(/[^0-9]/g,"")}?text=مرحباً، أريد الاستفسار عن ${lightbox.title||"هذا العمل"}`} target="_blank" style={{display:"block",marginTop:"12px",padding:"10px",background:"linear-gradient(135deg,#25D366,#128C7E)",borderRadius:"10px",textAlign:"center",color:"#fff",textDecoration:"none",fontSize:"13px",fontWeight:"700"}}>💬 استفسري عن هذا العمل</a>}
+          </div>
+        </div>
+      )}
+
+      <div style={{background:"linear-gradient(160deg,#2C1810 0%,#4A2C1A 50%,#6B3A22 100%)",padding:"50px 24px 30px",textAlign:"center",position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",inset:"0",background:"radial-gradient(ellipse at 30% 50%,rgba(201,169,110,0.15) 0%,transparent 60%)"}}/>
+        <div style={{position:"relative"}}>
+          {profile.photo ? <img src={profile.photo} style={{width:"110px",height:"110px",borderRadius:"50%",border:"3px solid #C9A96E",objectFit:"cover",margin:"0 auto 14px",display:"block",boxShadow:"0 0 0 6px rgba(201,169,110,0.2)"}}/> : <div style={{width:"110px",height:"110px",borderRadius:"50%",border:"3px solid #C9A96E",margin:"0 auto 14px",display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(201,169,110,0.15)",fontSize:"40px"}}>💄</div>}
+          <div style={{fontSize:"26px",fontWeight:"700",color:"#F5ECD7",margin:"0 0 4px"}}>{profile.name}</div>
+          <div style={{fontSize:"13px",color:"#C9A96E",margin:"0 0 8px",letterSpacing:"2px"}}>{profile.title}</div>
+          <div style={{fontSize:"13px",color:"rgba(245,236,215,0.75)",margin:"0 0 20px"}}>{profile.bio}</div>
+          <div style={{display:"flex",justifyContent:"center",gap:"14px"}}>
+            {profile.phone && <a href={`tel:${profile.phone}`} style={{width:"42px",height:"42px",borderRadius:"50%",background:"linear-gradient(135deg,#38A169,#276749)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:"18px",textDecoration:"none",boxShadow:"0 4px 12px rgba(0,0,0,0.3)"}}>📞</a>}
+            {profile.whatsapp && <a href={`https://wa.me/${profile.whatsapp.replace(/[^0-9]/g,"")}`} target="_blank" style={{width:"42px",height:"42px",borderRadius:"50%",background:"linear-gradient(135deg,#25D366,#128C7E)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:"18px",textDecoration:"none",boxShadow:"0 4px 12px rgba(0,0,0,0.3)"}}>💬</a>}
+            {profile.facebook && <a href={profile.facebook} target="_blank" style={{width:"42px",height:"42px",borderRadius:"50%",background:"linear-gradient(135deg,#1877F2,#0D4F9E)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:"18px",textDecoration:"none",fontWeight:"700",boxShadow:"0 4px 12px rgba(0,0,0,0.3)"}}>f</a>}
+            {profile.youtube && <a href={profile.youtube} target="_blank" style={{width:"42px",height:"42px",borderRadius:"50%",background:"linear-gradient(135deg,#FF0000,#CC0000)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:"18px",textDecoration:"none",boxShadow:"0 4px 12px rgba(0,0,0,0.3)"}}>▶</a>}
+          </div>
+          <div style={{display:"flex",justifyContent:"center",gap:"24px",marginTop:"20px",paddingTop:"16px",borderTop:"1px solid rgba(201,169,110,0.2)"}}>
+            <div style={{textAlign:"center"}}><div style={{fontSize:"20px",fontWeight:"700",color:"#C9A96E"}}>{gallery.length}</div><div style={{fontSize:"11px",color:"rgba(245,236,215,0.6)"}}>عمل</div></div>
+            <div style={{textAlign:"center"}}><div style={{fontSize:"20px",fontWeight:"700",color:"#C9A96E"}}>{cats.length}</div><div style={{fontSize:"11px",color:"rgba(245,236,215,0.6)"}}>تصنيف</div></div>
+            <div style={{textAlign:"center"}}><div style={{fontSize:"20px",fontWeight:"700",color:"#C9A96E"}}>✨</div><div style={{fontSize:"11px",color:"rgba(245,236,215,0.6)"}}>تميّز</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{fontSize:"18px",fontWeight:"700",color:"#2C1810",padding:"24px 20px 12px",display:"flex",alignItems:"center",gap:"8px"}}>
+        <span>أعمالي</span>
+        <div style={{height:"2px",flex:"1",background:"linear-gradient(90deg,#C9A96E,transparent)"}}/>
+      </div>
+      <div style={{display:"flex",gap:"8px",padding:"0 20px 16px",overflowX:"auto",scrollbarWidth:"none"}}>
+        {allCats.map(c=><button key={c} onClick={()=>setActiveCat(c)} style={{padding:"6px 16px",borderRadius:"20px",border:"none",cursor:"pointer",background:activeCat===c?"linear-gradient(135deg,#C9A96E,#8B6914)":"#fff",color:activeCat===c?"#fff":"#8C7B6B",fontSize:"12px",fontFamily:"Tajawal",fontWeight:"600",whiteSpace:"nowrap",flexShrink:"0",boxShadow:activeCat===c?"0 4px 12px rgba(201,169,110,0.4)":"0 2px 8px rgba(0,0,0,0.06)"}}>{c}</button>)}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",padding:"0 16px 110px"}}>
+        {filtered.length===0 ? (
+          <div style={{gridColumn:"span 2",textAlign:"center",padding:"60px 20px",color:"#C9A96E",fontSize:"14px"}}>
+            <div style={{fontSize:"48px"}}>💄</div>
+            <div style={{marginTop:"12px"}}>لا توجد أعمال في هذا التصنيف</div>
+          </div>
+        ) : filtered.map(item=>(
+          <div key={item.id} onClick={()=>setLightbox(item)} style={{borderRadius:"16px",overflow:"hidden",background:"#fff",cursor:"pointer",boxShadow:"0 4px 16px rgba(44,24,16,0.08)",position:"relative"}}>
+            <div style={{position:"absolute",top:"8px",right:"8px",background:"rgba(201,169,110,0.9)",color:"#fff",fontSize:"10px",fontWeight:"700",padding:"3px 8px",borderRadius:"8px"}}>{item.category}</div>
+            {item.price && <div style={{position:"absolute",top:"8px",left:"8px",background:"rgba(44,24,16,0.85)",color:"#C9A96E",fontSize:"11px",fontWeight:"700",padding:"3px 8px",borderRadius:"8px"}}>{item.price}</div>}
+            {item.url ? <img src={item.url} style={{width:"100%",aspectRatio:"3/4",objectFit:"cover",display:"block"}}/> : <div style={{width:"100%",aspectRatio:"3/4",background:"linear-gradient(135deg,#F5ECD7,#EDD9B8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"32px",color:"#C9A96E"}}>💄</div>}
+            {(item.title||item.description) && <div style={{padding:"8px 10px 10px"}}>{item.title && <div style={{fontSize:"12px",fontWeight:"700",color:"#2C1810",marginBottom:"2px"}}>{item.title}</div>}{item.description && <div style={{fontSize:"11px",color:"#8C7B6B",lineHeight:"1.4"}}>{item.description.length>50?item.description.slice(0,50)+"...":item.description}</div>}</div>}
+          </div>
+        ))}
+      </div>
+
+      {profile.whatsapp && <div style={{padding:"0 16px 16px"}}><a href={`https://wa.me/${profile.whatsapp.replace(/[^0-9]/g,"")}?text=مرحباً، أريد حجز موعد`} target="_blank" style={{display:"block",padding:"15px",background:"linear-gradient(135deg,#C9A96E,#8B6914)",borderRadius:"16px",textAlign:"center",color:"#fff",textDecoration:"none",fontSize:"15px",fontWeight:"700",boxShadow:"0 6px 20px rgba(201,169,110,0.4)"}}>💬 احجزي موعدك الآن</a></div>}
+
+      <div style={{position:"fixed",bottom:"0",left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:"480px",background:"rgba(255,255,255,0.95)",backdropFilter:"blur(20px)",borderTop:"1px solid #E8DDD0",display:"flex",justifyContent:"space-around",padding:"10px 0 16px",zIndex:"100"}}>
+        <button style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"3px",padding:"6px 18px",borderRadius:"16px",border:"none",cursor:"pointer",background:"linear-gradient(135deg,#C9A96E,#8B6914)",color:"#fff",fontSize:"11px",fontFamily:"Tajawal",fontWeight:"700"}}>
+          <span style={{fontSize:"20px"}}>🏠</span><span>الرئيسية</span>
+        </button>
+        <button onClick={()=>setPage("login")} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"3px",padding:"6px 18px",borderRadius:"16px",border:"none",cursor:"pointer",background:"transparent",color:"#8C7B6B",fontSize:"11px",fontFamily:"Tajawal"}}>
+          <span style={{fontSize:"20px"}}>⚙️</span><span>إدارة</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);</script>
+</body>
+</html>
